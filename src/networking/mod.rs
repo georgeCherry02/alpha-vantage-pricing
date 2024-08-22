@@ -2,14 +2,14 @@ mod query;
 mod utils;
 
 use query::{construct_url, Query};
-pub use query::{query, ToUrl};
+pub use query::{query_element, ToUrl};
 use utils::get_api_key;
 
-use crate::result::{VantageError, VantageResult};
+use crate::result::VantageResult;
 
 use serde::{de::DeserializeOwned, Deserialize};
 
-use log::{debug, error};
+use log::debug;
 
 use std::fmt::Debug;
 
@@ -40,10 +40,10 @@ async fn get_request<'a, ResponseDataType: Debug + DeserializeOwned>(
 }
 
 pub async fn make_query<'a, ResponseDataType: Debug + DeserializeOwned>(
-    mut full_query: Query<'a>,
+    mut query: Query<'a>,
 ) -> VantageResult<Vec<ResponseDataType>> {
-    let apikey = query(String::from("apikey"), get_api_key()?);
-    full_query.push(&apikey);
-    debug!("Making query: {:?}", full_query);
-    get_request(full_query).await
+    let apikey = query_element("apikey", get_api_key()?);
+    query.push(&apikey);
+    debug!("Making query: {:?}", query);
+    get_request(query).await
 }

@@ -14,8 +14,11 @@ where
     value: T,
 }
 
-pub fn query<T: ToString>(name: String, value: T) -> TypedQueryElement<T> {
-    TypedQueryElement { name, value }
+pub fn query_element<T: ToString>(name: &str, value: T) -> TypedQueryElement<T> {
+    TypedQueryElement {
+        name: String::from(name),
+        value,
+    }
 }
 
 pub trait ToUrl: Debug {
