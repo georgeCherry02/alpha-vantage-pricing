@@ -3,8 +3,8 @@ mod networking;
 mod result;
 mod utils;
 
-use api::{Contract, Function, Symbol};
-use networking::{make_query, query_element, ToUrl};
+use api::{Contract, Function, Symbol, TimeSeriesDaily};
+use networking::{make_query, make_query_direct, query_element, ToUrl};
 use result::VantageResult;
 
 use chrono::NaiveDate;
@@ -26,11 +26,16 @@ async fn view_ibm_options() -> VantageResult<()> {
 }
 
 async fn view_ibm_timeseries() -> VantageResult<()> {
+    let function = query_element("function", Function::TimeSeriesDaily);
+    let symbol = query_element("symbol", Symbol::new("IBM"));
+    let query: Vec<&dyn ToUrl> = vec![&function, &symbol];
+    let timeseries: TimeSeriesDaily = make_query_direct(query).await?;
+    info!("{:?}", timeseries);
     Ok(())
 }
 
 #[tokio::main]
 async fn main() -> VantageResult<()> {
     env_logger::init();
-    view_ibm_options().await
+    view_ibm_timeseries().await
 }

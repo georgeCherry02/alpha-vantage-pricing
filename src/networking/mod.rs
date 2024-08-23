@@ -7,12 +7,12 @@ use utils::get_api_key;
 
 use crate::result::VantageResult;
 
+use log::{debug, error};
 use serde::{de::DeserializeOwned, Deserialize};
-
-use log::debug;
 
 use std::fmt::Debug;
 
+// Turns out this format is only used in the options data response...
 #[derive(Debug, Deserialize)]
 pub struct VantageResponse<DataType> {
     endpoint: String,
@@ -20,30 +20,47 @@ pub struct VantageResponse<DataType> {
     data: Vec<DataType>,
 }
 
-fn parse_response<T: Debug>(response: VantageResponse<T>) -> VantageResult<Vec<T>> {
+fn handle_response<T: Debug>(response: VantageResponse<T>) -> VantageResult<Vec<T>> {
     match response.message.as_str() {
-        "success" => Ok(response.data),
-        _ => Err(response.message.into()),
+        "success" => {
+            debug!("Received response: {:?}", response.data);
+            Ok(response.data)
+        }
+        _ => {
+            error!("Received non-success message: {}", response.message);
+            Err(response.message.into())
+        }
     }
 }
 
-async fn get_request<'a, ResponseDataType: Debug + DeserializeOwned>(
-    query: Query<'a>,
-) -> VantageResult<Vec<ResponseDataType>> {
-    reqwest::Client::new()
+async fn dispatch_get_request<'a>(mut query: Query<'a>) -> VantageResult<reqwest::Response> {
+    let apikey = query_element("apikey", get_api_key()?);
+    query.push(&apikey);
+    Ok(reqwest::Client::new()
         .get(construct_url(query))
         .send()
-        .await?
-        .json::<VantageResponse<ResponseDataType>>()
-        .await
-        .map(parse_response)?
+        .await?)
 }
 
 pub async fn make_query<'a, ResponseDataType: Debug + DeserializeOwned>(
-    mut query: Query<'a>,
+    query: Query<'a>,
 ) -> VantageResult<Vec<ResponseDataType>> {
-    let apikey = query_element("apikey", get_api_key()?);
-    query.push(&apikey);
-    debug!("Making query: {:?}", query);
-    get_request(query).await
+    dispatch_get_request(query)
+        .await?
+        .json::<VantageResponse<ResponseDataType>>()
+        .await
+        .map(handle_response)?
+}
+
+pub async fn make_query_direct<'a, ResponseType: Debug + DeserializeOwned>(
+    query: Query<'a>,
+) -> VantageResult<ResponseType> {
+    Ok(dispatch_get_request(query)
+        .await?
+        .json::<ResponseType>()
+        .await
+        .map(|r| {
+            debug!("Received response: {:?}", r);
+            r
+        })?)
 }

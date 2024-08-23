@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 pub enum Function {
     #[serde(rename = "HISTORICAL_OPTIONS")]
     HistoricalOptions,
+    #[serde(rename = "TIME_SERIES_DAILY")]
+    TimeSeriesDaily,
 }
 
 impl ToString for Function {
